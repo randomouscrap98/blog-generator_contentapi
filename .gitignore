@@ -41,4 +41,5 @@ msbuild.wrn
 ignore/
 appsettings.json
 appsettings.Development.json
+appsettings.Debugging.json
 appsettings.Production.json

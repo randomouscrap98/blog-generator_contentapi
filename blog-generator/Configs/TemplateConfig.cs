@@ -1,10 +1,9 @@
-namespace blog_generator;
+namespace blog_generator.Configs;
 
-public class GeneralConfig
+public class TemplateConfig
 {
     public string TemplatesFolder {get;set;} = "";
     public string WebResourceBase {get;set;} = "";
-    public string WebsocketEndpoint {get;set;} = "";
     public string BlogFolder {get;set;} = "";
     public string StylesFolder {get;set;} = "";
 
