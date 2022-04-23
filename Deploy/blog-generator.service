@@ -1,0 +1,15 @@
+[Unit]
+Description=Blog-Generator for servicing qcs
+
+[Service]
+WorkingDirectory=/var/www/blog-generator
+ExecStart=/var/www/blog-generator/blog-generator
+Restart=always
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=blog-generator
+User=www-data
+Environment="ASPNETCORE_ENVIRONMENT=Production"
+
+[Install]
+WantedBy=multi-user.target
