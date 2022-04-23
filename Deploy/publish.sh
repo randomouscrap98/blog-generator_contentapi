@@ -17,7 +17,7 @@ fi
 
 # space separated
 deploy="Deploy"
-copyfolders=""
+copyfolders="" # Templates Markup"
 removefiles="ignore uploads"
 
 # Stuff for dotnet

@@ -1,7 +1,7 @@
 using blog_generator;
 
 IHost host = Host.CreateDefaultBuilder(args)
-    .ConfigureServices(services =>
+    .ConfigureServices((hostContext, services) =>
     {
         services.AddHostedService<Worker>();
     })
