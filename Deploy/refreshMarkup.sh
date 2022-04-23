@@ -6,7 +6,7 @@ set -e
 MBASE="https://raw.githubusercontent.com/12Me21/markup2/class"
 FILES="langs.js render.js helpers.js parse.js markup.css"
 
-cd ../blog-generator/Markup
+cd ../blog-generator/WebResources/markup
 rm *
 
 for f in $FILES

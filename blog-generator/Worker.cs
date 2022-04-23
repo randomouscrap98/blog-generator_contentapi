@@ -2,18 +2,20 @@ namespace blog_generator;
 
 public class Worker : BackgroundService
 {
-    private readonly ILogger<Worker> _logger;
+    private readonly ILogger logger;
+    protected GeneralConfig config;
 
-    public Worker(ILogger<Worker> logger)
+    public Worker(ILogger<Worker> logger, GeneralConfig config)
     {
-        _logger = logger;
+        this.logger = logger;
+        this.config = config;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
+            logger.LogInformation($"Worker running at: {DateTimeOffset.Now}, templates in: {config.TemplatesFolder}");
             await Task.Delay(1000, stoppingToken);
         }
     }
