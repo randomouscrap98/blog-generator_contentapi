@@ -22,6 +22,9 @@ public class BlogManager
 
     public List<string> GetAllBlogHashes()
     {
+        if(!Directory.Exists(templateConfig.BlogFolder))
+            return new List<string>();
+
         return Directory.EnumerateDirectories(templateConfig.BlogFolder).Select(x => Path.GetFileName(x)).ToList();
     }
 
@@ -48,7 +51,9 @@ public class BlogManager
     {
         //First, create the directory
         Directory.CreateDirectory(Path.GetDirectoryName(path) ?? 
-            throw new InvalidOperationException($"Unable to create {type} directory for {type} {path}"));
+            throw new InvalidOperationException($"[CREATE]: Unable to compute {type} directory for {type} {path}"));
+        
+        logger.LogInformation($"Writing {type} to {path}, length: {rawContents.Length}");
 
         //Then, just... write the data!
         return File.WriteAllTextAsync(path, rawContents);
@@ -57,4 +62,14 @@ public class BlogManager
     public Task WriteStyle(string hash, string rawContents) => WriteAny(StylePath(hash), rawContents, "style");
     public Task WriteBlogMain(string hash, string rawContents) => WriteAny(BlogMainPath(hash), rawContents, "blog-main");
     public Task WriteBlogPage(string parentHash, string pageHash, string rawContents) => WriteAny(BlogPagePath(parentHash, pageHash), rawContents, "blog-page");
+
+    public void DeleteBlog(string hash)
+    {
+        var path = BlogMainPath(hash);
+        Directory.Delete(Path.GetDirectoryName(path) ??
+            throw new InvalidOperationException($"[DELETE]: Unable to compute blog directory for blog {path}"), true);
+        logger.LogWarning($"Deleted blog {hash}");
+    }
+
+    //Styles aren't important, we can keep those around forever really...
 }

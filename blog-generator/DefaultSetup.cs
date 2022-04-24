@@ -36,6 +36,11 @@ public static class DefaultSetup
     /// <param name="services"></param>
     public static void AddDefaultServices(IServiceCollection services)
     {
+        //Thus, the profiles need to be in the SAME assembly. Later, change this to find at least one of the profiles themselves
+        services.AddAutoMapper(typeof(DefaultSetup));
+
+        services.AddSingleton<BlogManager>();
+        services.AddSingleton<BlogGenerator>();
     }
 
     /// <summary>
