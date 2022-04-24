@@ -8,6 +8,7 @@ IHost host = Host.CreateDefaultBuilder(args)
         DefaultSetup.AddDefaultServices(services);
         DefaultSetup.AddConfigBinding<WebsocketConfig>(services, hostContext.Configuration);
         DefaultSetup.AddConfigBinding<TemplateConfig>(services, hostContext.Configuration);
+        DefaultSetup.AddConfigBinding<StorageConfig>(services, hostContext.Configuration);
         services.AddHostedService<Worker>();
     })
     .Build();
