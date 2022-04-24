@@ -1,14 +1,16 @@
+using blog_generator.Configs;
+
 namespace blog_generator;
 
 public class Worker : BackgroundService
 {
     private readonly ILogger logger;
-    protected GeneralConfig config;
+    protected WebsocketConfig wsconfig;
 
-    public Worker(ILogger<Worker> logger, GeneralConfig config)
+    public Worker(ILogger<Worker> logger, WebsocketConfig wsconfig)
     {
         this.logger = logger;
-        this.config = config;
+        this.wsconfig = wsconfig;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -25,7 +27,7 @@ public class Worker : BackgroundService
             {
                 logger.LogWarning($"Exception broke out of websocket loop: {ex}");
             }
-            logger.LogInformation($"Worker running at: {DateTimeOffset.Now}, connecting to: {config.WebsocketEndpoint}?token={config.AnonymousToken}");
+            logger.LogInformation($"Worker running at: {DateTimeOffset.Now}, connecting to: {wsconfig.WebsocketEndpoint}?token={wsconfig.AnonymousToken}");
             await Task.Delay(1000, stoppingToken);
         }
     }

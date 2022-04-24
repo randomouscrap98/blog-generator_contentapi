@@ -13,6 +13,12 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="Stubble.Core" Version="1.9.3" />
+    <Reference Include="contentapi.data">
+       <HintPath>..\deps\contentapi.data.dll</HintPath>
+    </Reference>
+    <Reference Include="contentapi.db">
+       <HintPath>..\deps\contentapi.db.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
