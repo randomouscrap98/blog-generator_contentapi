@@ -3,56 +3,39 @@ using System.Text.RegularExpressions;
 using blog_generator.Configs;
 using contentapi.data;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace blog_generator;
-
-//public class RevisionData
-//{
-//    public long LastRevisionId {get;set;} = 0;
-//    public bool IsStyle {get;set;} = false;
-//}
 
 public class Worker : BackgroundService
 {
     private readonly ILogger logger;
     protected WebsocketConfig wsconfig;
     protected StorageConfig storageConfig;
-    protected TemplateConfig templateConfig;
+    protected BlogManager blogManager;
 
-    //protected Dictionary<string, RevisionData> cachedRevisions = new Dictionary<string, RevisionData>();
-
-    public Worker(ILogger<Worker> logger, WebsocketConfig wsconfig, StorageConfig storageConfig, TemplateConfig templateConfig)
+    public Worker(ILogger<Worker> logger, WebsocketConfig wsconfig, StorageConfig storageConfig, BlogManager blogManager)
     {
         this.logger = logger;
         this.wsconfig = wsconfig;
         this.storageConfig = storageConfig;
-        this.templateConfig = templateConfig;
+        this.blogManager = blogManager;
     }
 
-    //protected async Task<Dictionary<string, RevisionData>> LoadCachedRevisions()
-    //{
-    //    if(File.Exists(storageConfig.RevisionsFile))
-    //    {
-    //        logger.LogInformation($"Reading cached revisions from file {storageConfig.RevisionsFile}");
-    //        var result = JsonConvert.DeserializeObject<Dictionary<string, RevisionData>>(await File.ReadAllTextAsync(storageConfig.RevisionsFile, System.Text.Encoding.UTF8))
-    //            ?? throw new InvalidOperationException($"Couldn't deserialize cached revisions from {storageConfig.RevisionsFile}!");
-    //        logger.LogInformation($"Found {result.Count} revisions");
-    //        return result;
-    //    }
-    //    else
-    //    {
-    //        return new Dictionary<string, RevisionData>();
-    //    }
-    //}
-
-    //protected Task SaveCachedRevisions(Dictionary<string, RevisionData> cachedRevisions)
-    //{
-    //    return File.WriteAllTextAsync(storageConfig.RevisionsFile, JsonConvert.SerializeObject(cachedRevisions));
-    //}
-
-    protected Task HandleResponse(WebSocketResponse response)
+    protected async Task HandleResponse(WebSocketResponse response, WebSocket ws)
     {
         logger.LogDebug($"Received: {JsonConvert.SerializeObject(response)}");
+
+        if(response.data == null)
+        {
+            logger.LogInformation($"Null data in response type {response.type}, ignoring");
+            return;
+        }
+
+        if(response.id == "initial_precheck")
+        {
+            var responseData = ((JObject)response.data).ToObject<GenericSearchResult>();
+        }
 
         //Check for the id to know what kind of response it is. Rescan, etc.
 
@@ -64,32 +47,6 @@ public class Worker : BackgroundService
         //order. I don't know if the order matters too much since the blogs are in separate folders.
 
         //However, there are other things. Always check the cache, it SHOULD represent the... well, wait. 
-        return Task.CompletedTask;
-    }
-
-    protected string StylePath(string hash) => Path.Join(templateConfig.StylesFolder, $"{hash}.css");
-    protected bool StyleExists(string hash) => File.Exists(StylePath(hash));
-    protected string BlogMainPath(string hash) => Path.Join(templateConfig.BlogFolder, hash, "index.html");
-    protected string BlogPathPath(string hash, string pageHash) => Path.Join(templateConfig.BlogFolder, hash, $"{pageHash}.html");
-    protected bool BlogMainExists(string hash) => File.Exists(BlogMainPath(hash));
-
-    protected async Task<bool> ShouldRegenStyle(string hash, long revisionId)
-    {
-        if(!StyleExists(hash))
-            return true;
-
-        return !Regex.IsMatch(await File.ReadAllTextAsync(StylePath(hash)), @$"^/\*{revisionId}\*/");
-    }
-
-    protected async Task<bool> ShouldRegenBlog(string hash, long revisionId)
-    {
-        if(!BlogMainExists(hash))
-            return true;
-
-        var lines = await File.ReadAllLinesAsync(BlogMainPath(hash));
-
-        //First line doctype, next html
-        return !Regex.IsMatch(lines[2], @$"^<!--{revisionId}-->");
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -142,7 +99,7 @@ public class Worker : BackgroundService
                 while(!stoppingToken.IsCancellationRequested)
                 {
                     var listenResponse = await ws.ReceiveObjectAsync<WebSocketResponse>(ms, stoppingToken);
-                    await HandleResponse(listenResponse);
+                    await HandleResponse(listenResponse, ws);
                 }
             }
             catch(Exception ex)
