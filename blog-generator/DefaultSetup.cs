@@ -39,7 +39,7 @@ public static class DefaultSetup
         //Thus, the profiles need to be in the SAME assembly. Later, change this to find at least one of the profiles themselves
         services.AddAutoMapper(typeof(DefaultSetup));
 
-        services.AddSingleton<BlogManager>();
+        services.AddSingleton<BlogPathManager>();
         services.AddSingleton<BlogGenerator>();
     }
 

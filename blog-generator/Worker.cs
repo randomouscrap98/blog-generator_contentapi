@@ -13,19 +13,23 @@ public class Worker : BackgroundService
 {
     private readonly ILogger logger;
     protected WebsocketConfig wsconfig;
-    protected StorageConfig storageConfig;
-    protected BlogManager blogManager;
+    protected BlogGenerator blogGenerator;
     protected IMapper mapper;
 
     public const string contentName = nameof(RequestType.content);
+    public const string userName = nameof(RequestType.user);
     public const string blogFields = "id, text, hash, lastRevisionId, values, createUserId, createDate, parentId, keywords";
 
-    public Worker(ILogger<Worker> logger, WebsocketConfig wsconfig, StorageConfig storageConfig, BlogManager blogManager, IMapper mapper)
+    public const string initialPrecheckKey = "initial_precheck";
+    public const string blogRefreshKey = "blog_refresh";
+    public const string blogParentKey = "blog_parent";
+    public const string blogPagesKey = "blog_pages";
+
+    public Worker(ILogger<Worker> logger, WebsocketConfig wsconfig, BlogGenerator blogGenerator, IMapper mapper)
     {
         this.logger = logger;
         this.wsconfig = wsconfig;
-        this.storageConfig = storageConfig;
-        this.blogManager = blogManager;
+        this.blogGenerator = blogGenerator;
         this.mapper = mapper;
     }
 
@@ -38,16 +42,21 @@ public class Worker : BackgroundService
             },
             requests = new List<SearchRequest>() {
                 new SearchRequest() {
-                    name = "blog_parent",
+                    name = blogParentKey,
                     type = contentName,
                     fields = blogFields,
                     query = "hash = @hash"
                 },
                 new SearchRequest() {
-                    name = "blog_pages",
+                    name = blogPagesKey,
                     type = contentName,
                     fields = blogFields,
-                    query = "parentId in @blog_parent.id"
+                    query = $"parentId in @{blogPagesKey}.id"
+                },
+                new SearchRequest() {
+                    type = userName,
+                    fields = "id, name, createDate, avatar",
+                    query = $"id in @{blogParentKey}.createUserId or id in @{blogPagesKey}.createUserId"
                 }
                 //Unfortunately, this will need to be a separate request after receiving the first.
                 //Thus, generating the style will be separate.
@@ -66,14 +75,14 @@ public class Worker : BackgroundService
     {
         logger.LogDebug($"Testing blog {hash} for regeneration. Apparent last revision: {lastRevisionId}, forcing: {force}");
 
-        if(force || await blogManager.ShouldRegenBlog(hash, lastRevisionId))
+        if(force || await blogGenerator.ShouldRegenBlog(hash, lastRevisionId))
         {
             logger.LogInformation($"Requesting recreate of entire blog '{hash}' (forced: {force})");
 
             //This will also refresh (unconditionally?) the style
             var allBlogDataRequest = new WebSocketRequest()
             {
-                id = "blog_refresh",
+                id = blogRefreshKey,
                 type = "request",
                 data = GetFullBlogRegenSearchRequest(hash)
             };
@@ -96,15 +105,15 @@ public class Worker : BackgroundService
             return;
         }
 
-        if(response.id == "initial_precheck")
+        if(response.id == initialPrecheckKey)
         {
             var responseData = ((JObject)response.data).ToObject<GenericSearchResult>() ?? 
-                throw new InvalidOperationException("Couldn't convert initial_precheck response data to GenericSearchResult");
+                throw new InvalidOperationException($"Couldn't convert {initialPrecheckKey} response data to GenericSearchResult");
 
             if(!responseData.objects.ContainsKey(contentName))
-                throw new InvalidOperationException("No content result in initial_precheck!!");
+                throw new InvalidOperationException($"No content result in {initialPrecheckKey}!!");
 
-            var existingBlogs = blogManager.GetAllBlogHashes();
+            var existingBlogs = blogGenerator.GetAllBlogHashes();
             var contents = responseData.objects[contentName].Select(x => mapper.Map<ContentView>(x)).ToList();
             logger.LogDebug($"Initial_precheck: {contents.Count} potential blogs found");
 
@@ -118,6 +127,24 @@ public class Worker : BackgroundService
             logger.LogInformation($"Initial_precheck: Testing {contents.Count} blogs for potential regeneration");
             foreach(var blog in contents)
                 await BlogStaging(blog.hash, blog.lastRevisionId, sendFunc);
+        }
+        else if(response.id == blogRefreshKey)
+        {
+            var responseData = ((JObject)response.data).ToObject<GenericSearchResult>() ?? 
+                throw new InvalidOperationException($"Couldn't convert {blogRefreshKey} response data to GenericSearchResult");
+
+            if(!responseData.objects.ContainsKey(userName))
+                throw new InvalidOperationException($"No users found in {blogRefreshKey} response!");
+            if(!responseData.objects.ContainsKey(blogParentKey))
+                throw new InvalidOperationException($"No parent blog found in {blogRefreshKey} response!");
+            if(!responseData.objects.ContainsKey(blogPagesKey))
+                throw new InvalidOperationException($"No child pages found in {blogRefreshKey} response!");
+            
+            var users = responseData.objects[userName].Select(x => mapper.Map<UserView>(x)).ToList();
+            var parent = responseData.objects[blogParentKey].Select(x => mapper.Map<ContentView>(x)).First();
+            var pages = responseData.objects[blogPagesKey].Select(x => mapper.Map<ContentView>(x)).ToList();
+
+            //Need to go get styles here, it won't be part of the blog generation
         }
 
         //Check for the id to know what kind of response it is. Rescan, etc.
@@ -153,7 +180,7 @@ public class Worker : BackgroundService
                 //Don't worry about styles here, they will be brought in as part of the blog regeneration, which this precheck is pulling
                 var precheckRequest = new WebSocketRequest()
                 {
-                    id = "initial_precheck",
+                    id = initialPrecheckKey,
                     type = "request",
                     data = new SearchRequests()
                     {
