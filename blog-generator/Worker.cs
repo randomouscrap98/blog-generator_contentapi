@@ -19,7 +19,7 @@ public class Worker : BackgroundService
 
     public const string contentName = nameof(RequestType.content);
     public const string userName = nameof(RequestType.user);
-    public const string blogFields = "id, text, hash, lastRevisionId, values, createUserId, createDate, parentId, keywords, description";
+    public const string blogFields = "id, text, hash, lastRevisionId, values, createUserId, createDate, parentId, keywords, description, contentType";
 
     public const string requestKey = "request";
 
@@ -50,17 +50,17 @@ public class Worker : BackgroundService
                     name = blogParentKey,
                     type = contentName,
                     fields = blogFields,
-                    query = "hash = @hash and type = @type"
+                    query = "hash = @hash and contentType = @type"
                 },
                 new SearchRequest() {
                     name = blogPagesKey,
                     type = contentName,
                     fields = blogFields,
-                    query = $"parentId in @{blogPagesKey}.id and type = @type"
+                    query = $"parentId in @{blogParentKey}.id and contentType = @type"
                 },
                 new SearchRequest() {
                     type = userName,
-                    fields = "id, name, createDate, avatar",
+                    fields = "id, username, createDate, avatar",
                     query = $"id in @{blogParentKey}.createUserId or id in @{blogPagesKey}.createUserId"
                 }
                 //Unfortunately, this will need to be a separate request after receiving the first.
@@ -120,9 +120,23 @@ public class Worker : BackgroundService
         }
     }
 
+    public T ForceCastResult<T>(object item)
+    {
+        return JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(item)) ??
+            throw new InvalidOperationException($"Can't cast item to {typeof(T)}");
+    }
+
+    public List<T> ForceCastResultObjects<T>(GenericSearchResult result, string key, string onBehalf)
+    {
+        if(!result.objects.ContainsKey(key))
+            throw new InvalidOperationException($"No {key} result in {onBehalf}!!");
+
+        return result.objects[key].Select(x => ForceCastResult<T>(x)).ToList();
+    }
+
     protected async Task HandleResponse(WebSocketResponse response, Func<WebSocketRequest, Task> sendFunc)
     {
-        logger.LogDebug($"Received response type {response.type}, id {response.id}: {JsonConvert.SerializeObject(response.data)}");
+        logger.LogDebug($"Received response type {response.type}, id {response.id}: {JsonConvert.SerializeObject(response)}");
 
         if(response.data == null)
         {
@@ -135,10 +149,7 @@ public class Worker : BackgroundService
             var responseData = ((JObject)response.data).ToObject<GenericSearchResult>() ?? 
                 throw new InvalidOperationException($"Couldn't convert {initialPrecheckKey} response data to GenericSearchResult");
 
-            if(!responseData.objects.ContainsKey(contentName))
-                throw new InvalidOperationException($"No content result in {initialPrecheckKey}!!");
-
-            var contents = responseData.objects[contentName].Select(x => mapper.Map<ContentView>(x)).ToList();
+            var contents = ForceCastResultObjects<ContentView>(responseData, contentName, initialPrecheckKey);
             logger.LogDebug($"Initial_precheck: {contents.Count} potential blogs found");
 
             //Remove old blogs that are no longer in service, ie blogs on the system that weren't returned in the full check
@@ -153,16 +164,9 @@ public class Worker : BackgroundService
             var responseData = ((JObject)response.data).ToObject<GenericSearchResult>() ?? 
                 throw new InvalidOperationException($"Couldn't convert {blogRefreshKey} response data to GenericSearchResult");
 
-            if(!responseData.objects.ContainsKey(userName))
-                throw new InvalidOperationException($"No users found in {blogRefreshKey} response!");
-            if(!responseData.objects.ContainsKey(blogParentKey))
-                throw new InvalidOperationException($"No parent blog found in {blogRefreshKey} response!");
-            if(!responseData.objects.ContainsKey(blogPagesKey))
-                throw new InvalidOperationException($"No child pages found in {blogRefreshKey} response!");
-            
-            var users = responseData.objects[userName].Select(x => mapper.Map<UserView>(x)).ToList();
-            var parent = responseData.objects[blogParentKey].Select(x => mapper.Map<ContentView>(x)).First();
-            var pages = responseData.objects[blogPagesKey].Select(x => mapper.Map<ContentView>(x)).ToList();
+            var users = ForceCastResultObjects<UserView>(responseData, userName, blogRefreshKey); 
+            var parent = ForceCastResultObjects<ContentView>(responseData, blogParentKey, blogRefreshKey).First();
+            var pages = ForceCastResultObjects<ContentView>(responseData, blogPagesKey, blogRefreshKey);
 
             //Need to go get styles here, it won't be part of the blog generation
             var styles = blogGenerator.GetStylesForParent(parent);
@@ -185,13 +189,8 @@ public class Worker : BackgroundService
             var responseData = ((JObject)response.data).ToObject<GenericSearchResult>() ?? 
                 throw new InvalidOperationException($"Couldn't convert {styleRefreshKey} response data to GenericSearchResult");
 
-            if(!responseData.objects.ContainsKey(contentName))
-                throw new InvalidOperationException($"No content result in {styleRefreshKey}!!");
-            if(!responseData.objects.ContainsKey(userName))
-                throw new InvalidOperationException($"No users found in {blogRefreshKey} response!");
-
-            var contents = responseData.objects[contentName].Select(x => mapper.Map<ContentView>(x)).ToList();
-            var users = responseData.objects[userName].Select(x => mapper.Map<UserView>(x)).ToList();
+            var contents = ForceCastResultObjects<ContentView>(responseData, contentName, styleRefreshKey);
+            var users = ForceCastResultObjects<UserView>(responseData, userName, styleRefreshKey);
 
             //Now just regen the contents as styles
             foreach(var style in contents)
@@ -245,8 +244,8 @@ public class Worker : BackgroundService
                         requests = new List<SearchRequest>() {
                             new SearchRequest() {
                                 type = contentName,
-                                fields = "id, lastRevisionId, hash, values",
-                                query = "!valuelike(@key, @value) and type = @type"
+                                fields = "id, lastRevisionId, hash, values, contentType",
+                                query = "!valuelike(@key, @value) and contentType = @type"
                             }
                         }
                     }

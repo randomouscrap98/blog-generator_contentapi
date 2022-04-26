@@ -43,3 +43,6 @@ appsettings.json
 appsettings.Development.json
 appsettings.Debugging.json
 appsettings.Production.json
+
+blog-generator/WebResources/blog/*
+blog-generator/WebResources/style
