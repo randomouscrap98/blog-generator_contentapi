@@ -59,6 +59,21 @@ public class BlogGenerator
         logger.LogWarning($"Deleted blog {hash}");
     }
 
+    /// <summary>
+    /// Remove any blogs from the system that aren't in the given list of hashes
+    /// </summary>
+    /// <param name="allBlogHashes"></param>
+    public void CleanupMissingBlogs(IEnumerable<string> allBlogHashes)
+    {
+        var existingBlogs = pathManager.GetAllBlogHashes();
+        var removeHashes = existingBlogs.Except(allBlogHashes);
+
+        logger.LogInformation($"Removing {removeHashes.Count()} blogs on the system which are no longer configured to be blogs");
+
+        foreach(var remHash in removeHashes)
+            DeleteBlog(remHash);
+    }
+
     public async Task GenerateBlogpost(ContentView page, ContentView parent, List<ContentView> pages, List<UserView> users)
     {
         //This generates a single blogpost. It figures out how to generate it based on the data given. If the page itself IS the parent,
@@ -68,7 +83,13 @@ public class BlogGenerator
             scripts = templateConfig.ScriptIncludes.Select(x => pathManager.GetRootedWebResource(x)).ToList(),
             styles = templateConfig.StyleIncludes.Select(x => pathManager.GetRootedWebResource(x)).ToList(),
             revisionId = page.lastRevisionId,
-            title = page.name
+            title = page.name,
+            content = page.text,
+            pageId = page.id,
+            parentId = parent.id,
+            create_date = page.createDate,
+            parent_title = parent.name,
+            author = users.FirstOrDefault(x => x.id == page.createUserId)?.username ?? "???"
         };
 
         if(parent.values.ContainsKey(ShareStylesKey))
@@ -85,6 +106,6 @@ public class BlogGenerator
             }
         }
 
-        //Need to use mustache here to generate the template and return it
+        //Need to use mustache here to generate the template and write it
     }
 }

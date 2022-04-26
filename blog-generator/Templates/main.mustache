@@ -7,7 +7,7 @@
     {{#theme_color}}
     <meta name="theme-color" content="{{theme_color}}">
     {{/theme_color}}
-    <title>{{{title}}}</title>
+    <title>{{title}}</title>
     {{#icon}}
     <link rel="icon" type="{{icon.type}}" href="{{icon.link}}">
     {{/icon}}
@@ -22,13 +22,17 @@
 <body>
     <!-- The section that tells what "blog" this is-->
     <header id="blog_header">
-        <h1 id="blog_title">{{collection_header}}</h1>
+        <h1 id="blog_title">{{parent_title}}</h1>
     </header>
     <!-- The bulk of the page, including navigation -->
     <section id="main_container">
         <article id="post_container">
             <div id="title_container" class="post_title_container">
                 <h1 id="page_title" class="post_title">{{title}}</h1>
+            </div>
+            <div id="publish_info" class="publish_info">
+                <span id="author">{{author}}</span>
+                <time id="publish_date" datetime="{{create_date}}">{{create_date}}</time>
             </div>
             <!-- The page is rendered without any markup applied, so the 'rendered' container is empty. There is a separate
                 container with the raw content; upon load, the raw content is rendered into the render element, the render
@@ -45,8 +49,11 @@
             </ol>
         </nav>
     </section>
-    <!-- Whatever extra junk you want to put on the bottom. Hidden for now, don't know what to do with it -->
-    <footer style="display:none"></footer>
+    <!-- Whatever extra junk you want to put on the bottom. Don't know what to do with it -->
+    <footer id="blog_footer">
+        <span id="blog_id">{{parentId}}</span>
+        <span id="page_id">{{pageId}}</span>
+    </footer>
 </body>
 
 </html>

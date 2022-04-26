@@ -4,6 +4,7 @@ using AutoMapper;
 using blog_generator.Configs;
 using contentapi.data;
 using contentapi.data.Views;
+using contentapi.Db;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -38,20 +39,21 @@ public class Worker : BackgroundService
         return new SearchRequests()
         {
             values = new Dictionary<string, object>() {
-                { "hash", hash }
+                { "hash", hash },
+                { "type", InternalContentType.page }
             },
             requests = new List<SearchRequest>() {
                 new SearchRequest() {
                     name = blogParentKey,
                     type = contentName,
                     fields = blogFields,
-                    query = "hash = @hash"
+                    query = "hash = @hash and type = @type"
                 },
                 new SearchRequest() {
                     name = blogPagesKey,
                     type = contentName,
                     fields = blogFields,
-                    query = $"parentId in @{blogPagesKey}.id"
+                    query = $"parentId in @{blogPagesKey}.id and type = @type"
                 },
                 new SearchRequest() {
                     type = userName,
@@ -113,18 +115,13 @@ public class Worker : BackgroundService
             if(!responseData.objects.ContainsKey(contentName))
                 throw new InvalidOperationException($"No content result in {initialPrecheckKey}!!");
 
-            var existingBlogs = blogGenerator.GetAllBlogHashes();
             var contents = responseData.objects[contentName].Select(x => mapper.Map<ContentView>(x)).ToList();
             logger.LogDebug($"Initial_precheck: {contents.Count} potential blogs found");
 
             //Remove old blogs that are no longer in service, ie blogs on the system that weren't returned in the full check
-            var removeHashes = existingBlogs.Except(contents.Select(x => x.hash));
-            logger.LogInformation($"Initial_precheck: Removing {removeHashes.Count()} blogs on the system which are no longer configured to be blogs");
-            foreach(var remHash in removeHashes)
-                blogManager.DeleteBlog(remHash);
+            blogGenerator.CleanupMissingBlogs(contents.Select(x => x.hash));
             
             //Then go regen all the blogs. Yes, this might be a lot of individual lookups but oh well
-            logger.LogInformation($"Initial_precheck: Testing {contents.Count} blogs for potential regeneration");
             foreach(var blog in contents)
                 await BlogStaging(blog.hash, blog.lastRevisionId, sendFunc);
         }
@@ -186,13 +183,14 @@ public class Worker : BackgroundService
                     {
                         values = new Dictionary<string, object>() {
                             { "key", "share" },
-                            { "value", "true" }
+                            { "value", "true" },
+                            { "type", InternalContentType.page }
                         },
                         requests = new List<SearchRequest>() {
                             new SearchRequest() {
                                 type = contentName,
                                 fields = "id, lastRevisionId, hash, values",
-                                query = "!valuelike(@key, @value)"
+                                query = "!valuelike(@key, @value) and type = @type"
                             }
                         }
                     }

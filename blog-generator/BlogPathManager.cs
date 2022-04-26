@@ -27,6 +27,8 @@ public class BlogPathManager
     public bool LocalStyleExists(string hash) => File.Exists(LocalStylePath(hash));
     public bool LocalBlogMainExists(string hash) => File.Exists(LocalBlogMainPath(hash));
 
+    public string ImagePath(string hash) => $"{config.ImageRoot}/hash";
+
     public List<string> GetAllBlogHashes()
     {
         if(!Directory.Exists(BlogFolder))

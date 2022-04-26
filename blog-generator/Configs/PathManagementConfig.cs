@@ -17,4 +17,5 @@ public class PathManagementConfig
     /// <value></value>
     public string WebRoot {get;set;} = "";
     
+    public string ImageRoot {get;set;} = "";
 }
