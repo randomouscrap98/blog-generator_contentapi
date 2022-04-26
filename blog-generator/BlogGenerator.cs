@@ -41,6 +41,8 @@ public class BlogGenerator
         return !Regex.IsMatch(lines[2], @$"^<!--{revisionId}-->");
     }
 
+    public string GetAuthorFromList(long id, IEnumerable<UserView> users) => users.FirstOrDefault(x => x.id == id)?.username ?? "???";
+
     private Task WriteAny(string path, string rawContents, string type)
     {
         //First, create the directory
@@ -56,10 +58,19 @@ public class BlogGenerator
     public void DeleteBlog(string hash)
     {
         //TODO: at some point, don't just outright delete it, go move it to some archive
-        var path = pathManager.LocalBlogMainPath(hash);
-        Directory.Delete(Path.GetDirectoryName(path) ??
-            throw new InvalidOperationException($"[DELETE]: Unable to compute blog directory for blog {path}"), true);
-        logger.LogWarning($"Deleted blog {hash}");
+        var indexPath = pathManager.LocalBlogMainPath(hash);
+        var path = Path.GetDirectoryName(indexPath) ??
+            throw new InvalidOperationException($"[DELETE]: Unable to compute blog directory for blog {indexPath}");
+
+        if(Directory.Exists(path))
+        {
+            Directory.Delete(path, true);
+            logger.LogWarning($"Deleted blog {hash}");
+        }
+        else
+        {
+            logger.LogDebug($"No blog at {path}, ignoring delete");
+        }
     }
 
     /// <summary>
@@ -77,6 +88,29 @@ public class BlogGenerator
             DeleteBlog(remHash);
     }
 
+    public List<string> GetStylesForParent(ContentView parent)
+    {
+        if(parent.values.ContainsKey(ShareStylesKey))
+        {
+            try
+            {
+                var styles = ((JObject)parent.values[ShareStylesKey]).ToObject<List<string>>() ?? 
+                    throw new InvalidOperationException($"Couldn't cast {ShareStylesKey} to list!");
+                return styles;
+            }
+            catch(Exception ex)
+            {
+                logger.LogWarning($"Couldn't parse the parent styles for {parent.hash}({parent.id}): {ex}");
+            }
+        }
+        else
+        {
+            logger.LogDebug($"No styles for parent {parent.hash}({parent.id}) found when requested");
+        }
+
+        return new List<string>();
+    }
+
     public async Task GenerateBlogpost(ContentView page, ContentView parent, List<ContentView> pages, List<UserView> users)
     {
         //This generates a single blogpost. It figures out how to generate it based on the data given. If the page itself IS the parent,
@@ -85,34 +119,63 @@ public class BlogGenerator
         {
             scripts = templateConfig.ScriptIncludes.Select(x => pathManager.GetRootedWebResource(x)).ToList(),
             styles = templateConfig.StyleIncludes.Select(x => pathManager.GetRootedWebResource(x)).ToList(),
-            revisionId = page.lastRevisionId,
+            revision_id = page.lastRevisionId,
             title = page.name,
             content = page.text,
-            pageId = page.id,
-            parentId = parent.id,
+            page_id = page.id,
+            parent_id = parent.id,
             create_date = page.createDate,
             parent_title = parent.name,
-            author = users.FirstOrDefault(x => x.id == page.createUserId)?.username ?? "???"
+            render_date = DateTime.UtcNow,
+            author = GetAuthorFromList(page.createUserId, users)
         };
 
-        if(parent.values.ContainsKey(ShareStylesKey))
+        templateData.styles.AddRange(GetStylesForParent(parent).Select(x => pathManager.WebStylePath(x)));
+
+        templateData.navlinks = pages.OrderByDescending(x => x.createDate).Select(x => new NavigationItem()
         {
-            try
-            {
-                var styles = ((JObject)parent.values[ShareStylesKey]).ToObject<List<string>>() ?? 
-                    throw new InvalidOperationException($"Couldn't cast {ShareStylesKey} to list!");
-                templateData.styles.AddRange(styles.Select(x => pathManager.WebStylePath(x)));
-            }
-            catch(Exception ex)
-            {
-                logger.LogWarning($"Couldn't parse the parent styles: {ex}");
-            }
-        }
+            text = x.name,
+            link = pathManager.WebBlogPagePath(parent.hash, x.hash),
+            current = x.id == page.id
+        }).ToList();
 
         //Need to use mustache here to generate the template and write it
         var renderedPage = await renderer.RenderPageAsync("main", templateData);
 
         var path = page.id == parent.id ? pathManager.LocalBlogMainPath(parent.hash) : pathManager.LocalBlogPagePath(parent.hash, page.hash);
         await WriteAny(path, renderedPage, "page");
+    }
+
+    public async Task GenerateFullBlog(ContentView parent, List<ContentView> pages, List<UserView> users)
+    {
+        //First, delete the original blog to make things easy
+        DeleteBlog(parent.hash);
+
+        //Then, generate the blog for the parent
+        await GenerateBlogpost(parent, parent, pages, users);
+
+        //Then just one for each
+        foreach(var page in pages)
+        {
+            await GenerateBlogpost(page, parent, pages, users);
+        }
+    }
+
+    public async Task GenerateStyle(ContentView style, List<UserView> users)
+    {
+        var templateData = new StyleData()
+        {
+            revision_id = style.lastRevisionId,
+            page_id = style.id,
+            render_date = DateTime.UtcNow,
+            raw_style = style.text,
+            author = GetAuthorFromList(style.createUserId, users)
+        };
+
+        //Need to use mustache here to generate the template and write it
+        var renderedPage = await renderer.RenderPageAsync("style", templateData);
+
+        var path = pathManager.LocalStylePath(style.hash);
+        await WriteAny(path, renderedPage, "style");
     }
 }

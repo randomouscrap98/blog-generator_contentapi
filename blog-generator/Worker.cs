@@ -21,10 +21,13 @@ public class Worker : BackgroundService
     public const string userName = nameof(RequestType.user);
     public const string blogFields = "id, text, hash, lastRevisionId, values, createUserId, createDate, parentId, keywords";
 
+    public const string requestKey = "request";
+
     public const string initialPrecheckKey = "initial_precheck";
     public const string blogRefreshKey = "blog_refresh";
     public const string blogParentKey = "blog_parent";
     public const string blogPagesKey = "blog_pages";
+    public const string styleRefreshKey = "style_refresh";
 
     public Worker(ILogger<Worker> logger, WebsocketConfig wsconfig, BlogGenerator blogGenerator, IMapper mapper)
     {
@@ -72,6 +75,23 @@ public class Worker : BackgroundService
         };
     }
 
+    public SearchRequests GetStyleRegenRequest(List<string> styles)
+    {
+        return new SearchRequests()
+        {
+            values = new Dictionary<string, object>() {
+                { "hashes", styles }
+            },
+            requests = new List<SearchRequest>() {
+                new SearchRequest() {
+                    type = contentName,
+                    fields = blogFields, //Should also be enough for styles...
+                    query = "hash in @hashes"
+                }
+            }
+        };
+    }
+
     //Only staging, because we still have to send the new request and get it back...
     protected async Task BlogStaging(string hash, long lastRevisionId, Func<WebSocketRequest, Task> sendFunc, bool force = false)
     {
@@ -82,14 +102,12 @@ public class Worker : BackgroundService
             logger.LogInformation($"Requesting recreate of entire blog '{hash}' (forced: {force})");
 
             //This will also refresh (unconditionally?) the style
-            var allBlogDataRequest = new WebSocketRequest()
+            await sendFunc(new WebSocketRequest()
             {
                 id = blogRefreshKey,
-                type = "request",
+                type = requestKey,
                 data = GetFullBlogRegenSearchRequest(hash)
-            };
-
-            await sendFunc(allBlogDataRequest);
+            });
         }
         else
         {
@@ -142,6 +160,32 @@ public class Worker : BackgroundService
             var pages = responseData.objects[blogPagesKey].Select(x => mapper.Map<ContentView>(x)).ToList();
 
             //Need to go get styles here, it won't be part of the blog generation
+            var styles = blogGenerator.GetStylesForParent(parent);
+
+            if(styles.Count > 0)
+            {
+                await sendFunc(new WebSocketRequest()
+                {
+                    id = styleRefreshKey,
+                    type = requestKey,
+                    data = GetStyleRegenRequest(styles)
+                });
+            }
+
+            //And then blog generation
+            await blogGenerator.GenerateFullBlog(parent, pages, users);
+        }
+        else if(response.id == styleRefreshKey)
+        {
+            var responseData = ((JObject)response.data).ToObject<GenericSearchResult>() ?? 
+                throw new InvalidOperationException($"Couldn't convert {styleRefreshKey} response data to GenericSearchResult");
+
+            if(!responseData.objects.ContainsKey(contentName))
+                throw new InvalidOperationException($"No content result in {styleRefreshKey}!!");
+
+            var contents = responseData.objects[contentName].Select(x => mapper.Map<ContentView>(x)).ToList();
+
+            //Now just regen the contents as styles
         }
 
         //Check for the id to know what kind of response it is. Rescan, etc.
@@ -178,7 +222,7 @@ public class Worker : BackgroundService
                 var precheckRequest = new WebSocketRequest()
                 {
                     id = initialPrecheckKey,
-                    type = "request",
+                    type = requestKey,
                     data = new SearchRequests()
                     {
                         values = new Dictionary<string, object>() {
