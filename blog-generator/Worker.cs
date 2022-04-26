@@ -87,6 +87,11 @@ public class Worker : BackgroundService
                     type = contentName,
                     fields = blogFields, //Should also be enough for styles...
                     query = "hash in @hashes"
+                },
+                new SearchRequest() {
+                    type = userName,
+                    fields = "id, name, createDate, avatar",
+                    query = $"id in @{contentName}.createUserId"
                 }
             }
         };
@@ -117,7 +122,7 @@ public class Worker : BackgroundService
 
     protected async Task HandleResponse(WebSocketResponse response, Func<WebSocketRequest, Task> sendFunc)
     {
-        logger.LogDebug($"Received: {JsonConvert.SerializeObject(response)}");
+        logger.LogDebug($"Received response type {response.type}, id {response.id}: {JsonConvert.SerializeObject(response.data)}");
 
         if(response.data == null)
         {
@@ -182,10 +187,17 @@ public class Worker : BackgroundService
 
             if(!responseData.objects.ContainsKey(contentName))
                 throw new InvalidOperationException($"No content result in {styleRefreshKey}!!");
+            if(!responseData.objects.ContainsKey(userName))
+                throw new InvalidOperationException($"No users found in {blogRefreshKey} response!");
 
             var contents = responseData.objects[contentName].Select(x => mapper.Map<ContentView>(x)).ToList();
+            var users = responseData.objects[userName].Select(x => mapper.Map<UserView>(x)).ToList();
 
             //Now just regen the contents as styles
+            foreach(var style in contents)
+            {
+                await blogGenerator.GenerateStyle(style, users);
+            }
         }
 
         //Check for the id to know what kind of response it is. Rescan, etc.

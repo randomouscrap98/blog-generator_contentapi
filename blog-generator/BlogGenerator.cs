@@ -113,6 +113,8 @@ public class BlogGenerator
 
     public async Task GenerateBlogpost(ContentView page, ContentView parent, List<ContentView> pages, List<UserView> users)
     {
+        logger.LogDebug($"Generating blogpost: {page.hash}({page.id})");
+
         //This generates a single blogpost. It figures out how to generate it based on the data given. If the page itself IS the parent,
         //something else MAY be done.
         var templateData = new MainTemplateData()
@@ -163,6 +165,8 @@ public class BlogGenerator
 
     public async Task GenerateStyle(ContentView style, List<UserView> users)
     {
+        logger.LogDebug($"Generating style: {style.hash}({style.id})");
+
         var templateData = new StyleData()
         {
             revision_id = style.lastRevisionId,
