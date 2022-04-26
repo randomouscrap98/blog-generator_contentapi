@@ -10,13 +10,15 @@ public class BlogGenerator
     protected ILogger<BlogGenerator> logger;
     protected BlogPathManager pathManager;
     protected TemplateConfig templateConfig;
+    protected TemplateLoader renderer;
 
     public const string ShareStylesKey = "share_styles";
 
-    public BlogGenerator(ILogger<BlogGenerator> logger, TemplateConfig templateConfig, BlogPathManager pathManager)
+    public BlogGenerator(ILogger<BlogGenerator> logger, TemplateConfig templateConfig, BlogPathManager pathManager, TemplateLoader renderer)
     {
         this.logger = logger;
         this.templateConfig = templateConfig;
+        this.renderer = renderer;
         this.pathManager = pathManager;
     }
 
@@ -53,6 +55,7 @@ public class BlogGenerator
 
     public void DeleteBlog(string hash)
     {
+        //TODO: at some point, don't just outright delete it, go move it to some archive
         var path = pathManager.LocalBlogMainPath(hash);
         Directory.Delete(Path.GetDirectoryName(path) ??
             throw new InvalidOperationException($"[DELETE]: Unable to compute blog directory for blog {path}"), true);
@@ -107,5 +110,9 @@ public class BlogGenerator
         }
 
         //Need to use mustache here to generate the template and write it
+        var renderedPage = await renderer.RenderPageAsync("main", templateData);
+
+        var path = page.id == parent.id ? pathManager.LocalBlogMainPath(parent.hash) : pathManager.LocalBlogPagePath(parent.hash, page.hash);
+        await WriteAny(path, renderedPage, "page");
     }
 }
