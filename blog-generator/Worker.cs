@@ -19,7 +19,7 @@ public class Worker : BackgroundService
 
     public const string contentName = nameof(RequestType.content);
     public const string userName = nameof(RequestType.user);
-    public const string blogFields = "id, text, hash, lastRevisionId, values, createUserId, createDate, parentId, keywords";
+    public const string blogFields = "id, text, hash, lastRevisionId, values, createUserId, createDate, parentId, keywords, description";
 
     public const string requestKey = "request";
 

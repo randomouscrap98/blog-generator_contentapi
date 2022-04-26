@@ -121,14 +121,10 @@ public class BlogGenerator
         {
             scripts = templateConfig.ScriptIncludes.Select(x => pathManager.GetRootedWebResource(x)).ToList(),
             styles = templateConfig.StyleIncludes.Select(x => pathManager.GetRootedWebResource(x)).ToList(),
-            revision_id = page.lastRevisionId,
-            title = page.name,
-            content = page.text,
-            page_id = page.id,
-            parent_id = parent.id,
-            create_date = page.createDate,
-            parent_title = parent.name,
+            page = page,
+            parent = parent,
             render_date = DateTime.UtcNow,
+            keywords = string.Join(", ", page.keywords.Union(parent.keywords)),
             author = GetAuthorFromList(page.createUserId, users)
         };
 
@@ -169,10 +165,8 @@ public class BlogGenerator
 
         var templateData = new StyleData()
         {
-            revision_id = style.lastRevisionId,
-            page_id = style.id,
+            page = style,
             render_date = DateTime.UtcNow,
-            raw_style = style.text,
             author = GetAuthorFromList(style.createUserId, users)
         };
 
