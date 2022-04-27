@@ -45,4 +45,4 @@ appsettings.Debugging.json
 appsettings.Production.json
 
 blog-generator/WebResources/blog/*
-blog-generator/WebResources/style
+blog-generator/WebResources/styles/
