@@ -19,7 +19,7 @@ public class BlogPathManager
     public string LocalBlogPagePath(string hash, string pageHash) => Path.Join(BlogFolder, hash, $"{pageHash}.html");
 
     public string WebStylePath(string hash) => WebContentpath($"{config.StylesFolder}/{hash}.css");
-    public string WebBlogMainPath(string hash) => WebContentpath($"{config.BlogFolder}/{hash}/index.html");
+    public string WebBlogMainPath(string hash) => WebContentpath($"{config.BlogFolder}/{hash}/");
     public string WebBlogPagePath(string hash, string pageHash) => WebContentpath($"{config.BlogFolder}/{hash}/{pageHash}.html");
 
     public string WebContentpath(string resource) => $"{config.WebContentRoot}{resource.TrimStart('/')}";
