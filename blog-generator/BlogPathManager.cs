@@ -36,4 +36,12 @@ public class BlogPathManager
 
         return Directory.EnumerateDirectories(BlogFolder).Select(x => Path.GetFileName(x)).ToList();
     }
+
+    public List<string> GetAllStyleHashes()
+    {
+        if(!Directory.Exists(StylesFolder))
+            return new List<string>();
+
+        return Directory.EnumerateFiles(StylesFolder).Select(x => Path.GetFileNameWithoutExtension(x)).ToList();
+    }
 }

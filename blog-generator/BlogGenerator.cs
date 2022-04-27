@@ -94,7 +94,7 @@ public class BlogGenerator
         {
             try
             {
-                var styles = ((JObject)parent.values[ShareStylesKey]).ToObject<List<string>>() ?? 
+                var styles = Utilities.ForceCastResult<List<string>>(parent.values[ShareStylesKey]) ??
                     throw new InvalidOperationException($"Couldn't cast {ShareStylesKey} to list!");
                 return styles;
             }

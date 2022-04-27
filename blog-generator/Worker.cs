@@ -1,5 +1,4 @@
 using System.Net.WebSockets;
-using System.Text.RegularExpressions;
 using AutoMapper;
 using blog_generator.Configs;
 using contentapi.data;
@@ -15,26 +14,34 @@ public class Worker : BackgroundService
     private readonly ILogger logger;
     protected WebsocketConfig wsconfig;
     protected BlogGenerator blogGenerator;
+    protected BlogPathManager pathManager;
     protected IMapper mapper;
 
     public const string contentName = nameof(RequestType.content);
     public const string userName = nameof(RequestType.user);
-    public const string blogFields = "id, text, hash, lastRevisionId, values, createUserId, createDate, parentId, keywords, description, contentType";
+    public const string blogFields = "id, name, text, hash, lastRevisionId, values, createUserId, createDate, parentId, keywords, description, contentType";
+    public const string userFields = "id, username, createDate, avatar";
 
     public const string requestKey = "request";
+    public const string liveKey = "live";
+    public const string shareKey = "share";
+    public const string parentKey = "parent";
 
     public const string initialPrecheckKey = "initial_precheck";
     public const string blogRefreshKey = "blog_refresh";
     public const string blogParentKey = "blog_parent";
     public const string blogPagesKey = "blog_pages";
+    public const string stylePagesKey = "style_pages";
     public const string styleRefreshKey = "style_refresh";
 
-    public Worker(ILogger<Worker> logger, WebsocketConfig wsconfig, BlogGenerator blogGenerator, IMapper mapper)
+    public Worker(ILogger<Worker> logger, WebsocketConfig wsconfig, BlogGenerator blogGenerator, IMapper mapper,
+        BlogPathManager pathManager)
     {
         this.logger = logger;
         this.wsconfig = wsconfig;
         this.blogGenerator = blogGenerator;
         this.mapper = mapper;
+        this.pathManager = pathManager;
     }
 
     public SearchRequests GetFullBlogRegenSearchRequest(string hash)
@@ -60,17 +67,9 @@ public class Worker : BackgroundService
                 },
                 new SearchRequest() {
                     type = userName,
-                    fields = "id, username, createDate, avatar",
+                    fields = userFields,
                     query = $"id in @{blogParentKey}.createUserId or id in @{blogPagesKey}.createUserId"
                 }
-                //Unfortunately, this will need to be a separate request after receiving the first.
-                //Thus, generating the style will be separate.
-                /*, new SearchRequest() {
-                    name = "blog_styles",
-                    type = contentName,
-                    fields = blogFields,
-                    query = "hash in @blog_parent.values.share_styles" //TODO: this may cause problems
-                }*/
             }
         };
     }
@@ -90,7 +89,7 @@ public class Worker : BackgroundService
                 },
                 new SearchRequest() {
                     type = userName,
-                    fields = "id, name, createDate, avatar",
+                    fields = userFields,
                     query = $"id in @{contentName}.createUserId"
                 }
             }
@@ -98,45 +97,38 @@ public class Worker : BackgroundService
     }
 
     //Only staging, because we still have to send the new request and get it back...
-    protected async Task BlogStaging(string hash, long lastRevisionId, Func<WebSocketRequest, Task> sendFunc, bool force = false)
+    protected async Task BlogStaging(ContentView content, Func<WebSocketRequest, Task> sendFunc, bool force = false)
     {
-        logger.LogDebug($"Testing blog {hash} for regeneration. Apparent last revision: {lastRevisionId}, forcing: {force}");
+        logger.LogDebug($"Testing blog {content.hash}({content.id}) for regeneration. Apparent current revision: {content.lastRevisionId}, forcing: {force}");
 
-        if(force || await blogGenerator.ShouldRegenBlog(hash, lastRevisionId))
+        if(!(content.values.ContainsKey(shareKey) && content.values[shareKey].ToString()?.ToLower() == "true"))
         {
-            logger.LogInformation($"Requesting recreate of entire blog '{hash}' (forced: {force})");
+            logger.LogInformation($"Page {content.hash}({content.id}) doesn't appear to be a blog, removing it if it exists");
+            blogGenerator.DeleteBlog(content.hash);
+            return;
+        }
+
+        if(force || await blogGenerator.ShouldRegenBlog(content.hash, content.lastRevisionId))
+        {
+            logger.LogInformation($"Requesting recreate of entire blog '{content.hash}'({content.id}) (forced: {force})");
 
             //This will also refresh (unconditionally?) the style
             await sendFunc(new WebSocketRequest()
             {
                 id = blogRefreshKey,
                 type = requestKey,
-                data = GetFullBlogRegenSearchRequest(hash)
+                data = GetFullBlogRegenSearchRequest(content.hash)
             });
         }
         else
         {
-            logger.LogInformation($"Blog {hash} up to date, leaving it alone");
+            logger.LogInformation($"Blog {content.hash}({content.id}) up to date, leaving it alone");
         }
-    }
-
-    public T ForceCastResult<T>(object item)
-    {
-        return JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(item)) ??
-            throw new InvalidOperationException($"Can't cast item to {typeof(T)}");
-    }
-
-    public List<T> ForceCastResultObjects<T>(GenericSearchResult result, string key, string onBehalf)
-    {
-        if(!result.objects.ContainsKey(key))
-            throw new InvalidOperationException($"No {key} result in {onBehalf}!!");
-
-        return result.objects[key].Select(x => ForceCastResult<T>(x)).ToList();
     }
 
     protected async Task HandleResponse(WebSocketResponse response, Func<WebSocketRequest, Task> sendFunc)
     {
-        logger.LogDebug($"Received response type {response.type}, id {response.id}: {JsonConvert.SerializeObject(response)}");
+        logger.LogDebug($"Received response type {response.type}, id {response.id}, error '{response.error}'");
 
         if(response.data == null)
         {
@@ -149,24 +141,46 @@ public class Worker : BackgroundService
             var responseData = ((JObject)response.data).ToObject<GenericSearchResult>() ?? 
                 throw new InvalidOperationException($"Couldn't convert {initialPrecheckKey} response data to GenericSearchResult");
 
-            var contents = ForceCastResultObjects<ContentView>(responseData, contentName, initialPrecheckKey);
-            logger.LogDebug($"Initial_precheck: {contents.Count} potential blogs found");
+            var contents = Utilities.ForceCastResultObjects<ContentView>(responseData, blogPagesKey, initialPrecheckKey);
+            var styles = Utilities.ForceCastResultObjects<ContentView>(responseData, stylePagesKey, initialPrecheckKey);
+            logger.LogDebug($"Initial_precheck: {contents.Count} potential blogs found, {styles.Count} potential styles");
 
             //Remove old blogs that are no longer in service, ie blogs on the system that weren't returned in the full check
             blogGenerator.CleanupMissingBlogs(contents.Select(x => x.hash));
             
+            var regenStyles = new List<string>();
+            
+            foreach(var style in styles)
+                if(await blogGenerator.ShouldRegenStyle(style.hash, style.lastRevisionId))
+                    regenStyles.Add(style.hash);
+            
+            if(regenStyles.Count > 0)
+            {
+                logger.LogInformation($"Re-obtaining {regenStyles.Count} styles that were apparently updated");
+                await sendFunc(new WebSocketRequest()
+                {
+                    id = styleRefreshKey,
+                    type = requestKey,
+                    data = GetStyleRegenRequest(regenStyles)
+                });
+            }
+            else
+            {
+                logger.LogInformation($"No styles need to be regenerated in {initialPrecheckKey}");
+            }
+
             //Then go regen all the blogs. Yes, this might be a lot of individual lookups but oh well
             foreach(var blog in contents)
-                await BlogStaging(blog.hash, blog.lastRevisionId, sendFunc);
+                await BlogStaging(blog, sendFunc);
         }
         else if(response.id == blogRefreshKey)
         {
             var responseData = ((JObject)response.data).ToObject<GenericSearchResult>() ?? 
                 throw new InvalidOperationException($"Couldn't convert {blogRefreshKey} response data to GenericSearchResult");
 
-            var users = ForceCastResultObjects<UserView>(responseData, userName, blogRefreshKey); 
-            var parent = ForceCastResultObjects<ContentView>(responseData, blogParentKey, blogRefreshKey).First();
-            var pages = ForceCastResultObjects<ContentView>(responseData, blogPagesKey, blogRefreshKey);
+            var users = Utilities.ForceCastResultObjects<UserView>(responseData, userName, blogRefreshKey); 
+            var parent = Utilities.ForceCastResultObjects<ContentView>(responseData, blogParentKey, blogRefreshKey).First();
+            var pages = Utilities.ForceCastResultObjects<ContentView>(responseData, blogPagesKey, blogRefreshKey);
 
             //Need to go get styles here, it won't be part of the blog generation
             var styles = blogGenerator.GetStylesForParent(parent);
@@ -189,8 +203,8 @@ public class Worker : BackgroundService
             var responseData = ((JObject)response.data).ToObject<GenericSearchResult>() ?? 
                 throw new InvalidOperationException($"Couldn't convert {styleRefreshKey} response data to GenericSearchResult");
 
-            var contents = ForceCastResultObjects<ContentView>(responseData, contentName, styleRefreshKey);
-            var users = ForceCastResultObjects<UserView>(responseData, userName, styleRefreshKey);
+            var contents = Utilities.ForceCastResultObjects<ContentView>(responseData, contentName, styleRefreshKey);
+            var users = Utilities.ForceCastResultObjects<UserView>(responseData, userName, styleRefreshKey);
 
             //Now just regen the contents as styles
             foreach(var style in contents)
@@ -198,17 +212,27 @@ public class Worker : BackgroundService
                 await blogGenerator.GenerateStyle(style, users);
             }
         }
+        else if (response.type == liveKey)
+        {
+            var liveData = ((JObject)response.data).ToObject<LiveData>() ?? 
+                throw new InvalidOperationException($"Couldn't convert {liveKey} response data to LiveData!");
+            
+            if(liveData.objects.ContainsKey(EventType.activity_event))
+            {
+                var realObjects = liveData.objects[EventType.activity_event];
 
-        //Check for the id to know what kind of response it is. Rescan, etc.
+                var contents = Utilities.ForceCastResultObjects<ContentView>(realObjects, contentName, liveKey);
+                var parents = Utilities.ForceCastResultObjects<ContentView>(realObjects, parentKey, liveKey);
 
-        //If you get content inside an event activity type, that's what you use to regen. Regens are two types:
-        //full blog regen and style regen. If the content is in the cache and marked a style, go save it again.
-        //If the content is a blog (share), then regen that blog. If the PARENT is a blog, regen that too, in that
-        //order. I don't know if the order matters too much since the blogs are in separate folders.
-
-        //However, there are other things. Always check the cache, it SHOULD represent the... well, wait. 
-
-        //Don't force on content where it is a share, but force if parent is share (activity)
+                //If the direct content to be modified was a blog, do the standard procedure
+                foreach(var content in contents)
+                    await BlogStaging(content, sendFunc);
+                
+                //But, if the thing is a child of a blog, force the regeneration of the whole thing to be safe
+                foreach(var parent in parents)
+                    await BlogStaging(parent, sendFunc, true);
+            }
+        }
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -237,15 +261,23 @@ public class Worker : BackgroundService
                     data = new SearchRequests()
                     {
                         values = new Dictionary<string, object>() {
-                            { "key", "share" },
+                            { "key", shareKey },
                             { "value", "true" },
-                            { "type", InternalContentType.page }
+                            { "type", InternalContentType.page },
+                            { "existing_styles", pathManager.GetAllStyleHashes() }
                         },
                         requests = new List<SearchRequest>() {
                             new SearchRequest() {
+                                name = blogPagesKey,
                                 type = contentName,
                                 fields = "id, lastRevisionId, hash, values, contentType",
                                 query = "!valuelike(@key, @value) and contentType = @type"
+                            },
+                            new SearchRequest() {
+                                name = stylePagesKey,
+                                type = contentName,
+                                fields = "id, lastRevisionId, hash",
+                                query = "hash in @existing_styles"
                             }
                         }
                     }
