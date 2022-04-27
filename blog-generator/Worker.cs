@@ -19,6 +19,7 @@ public class Worker : BackgroundService
 
     public const string contentName = nameof(RequestType.content);
     public const string userName = nameof(RequestType.user);
+    public const string activityName = nameof(RequestType.activity);
     public const string blogFields = "id, name, text, hash, lastRevisionId, values, createUserId, createDate, parentId, keywords, description, contentType";
     public const string userFields = "id, username, createDate, avatar";
 
@@ -66,9 +67,14 @@ public class Worker : BackgroundService
                     query = $"parentId in @{blogParentKey}.id and contentType = @type"
                 },
                 new SearchRequest() {
+                    type = activityName,
+                    fields = "*",
+                    query = $"id in @{blogPagesKey}.lastRevisionId or id in @{blogParentKey}.lastRevisionId"
+                },
+                new SearchRequest() {
                     type = userName,
                     fields = userFields,
-                    query = $"id in @{blogParentKey}.createUserId or id in @{blogPagesKey}.createUserId"
+                    query = $"id in @{blogParentKey}.createUserId or id in @{blogPagesKey}.createUserId or id in @{activityName}.{nameof(ActivityView.userId)}"
                 }
             }
         };
@@ -182,6 +188,7 @@ public class Worker : BackgroundService
             var users = Utilities.ForceCastResultObjects<UserView>(responseData, userName, blogRefreshKey); 
             var parent = Utilities.ForceCastResultObjects<ContentView>(responseData, blogParentKey, blogRefreshKey).First();
             var pages = Utilities.ForceCastResultObjects<ContentView>(responseData, blogPagesKey, blogRefreshKey);
+            var activity = Utilities.ForceCastResultObjects<ActivityView>(responseData, activityName, blogRefreshKey);
 
             //Need to go get styles here, it won't be part of the blog generation
             var styles = blogGenerator.GetStylesForParent(parent);
@@ -197,7 +204,7 @@ public class Worker : BackgroundService
             }
 
             //And then blog generation
-            await blogGenerator.GenerateFullBlog(parent, pages, users);
+            await blogGenerator.GenerateFullBlog(parent, pages, users, activity);
         }
         else if(response.id == styleRefreshKey)
         {

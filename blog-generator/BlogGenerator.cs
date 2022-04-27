@@ -122,10 +122,11 @@ public class BlogGenerator
         return new List<string>();
     }
 
-    public async Task GenerateBlogpost(ContentView page, ContentView parent, List<ContentView> pages, List<UserView> users)
+    public async Task GenerateBlogpost(ContentView page, ContentView parent, List<ContentView> pages, List<UserView> users, List<ActivityView> activity)
     {
         logger.LogDebug($"Generating blogpost: {page.hash}({page.id})");
 
+        var revision = activity.FirstOrDefault(x => x.id == page.lastRevisionId);
         //This generates a single blogpost. It figures out how to generate it based on the data given. If the page itself IS the parent,
         //something else MAY be done.
         var templateData = new MainTemplateData()
@@ -137,7 +138,9 @@ public class BlogGenerator
             render_date = DateTime.UtcNow,
             keywords = string.Join(", ", page.keywords.Union(parent.keywords)),
             parent_link = pathManager.WebBlogMainPath(parent.hash),
-            author = GetAuthorFromList(page.createUserId, users)
+            author = GetAuthorFromList(page.createUserId, users),
+            edit_author = GetAuthorFromList(revision?.userId ?? -1, users),
+            revision = revision
         };
 
         templateData.styles.AddRange(GetStylesForParent(parent).Select(x => pathManager.WebStylePath(x)));
@@ -157,18 +160,18 @@ public class BlogGenerator
         await WriteAny(path, renderedPage, "page");
     }
 
-    public async Task GenerateFullBlog(ContentView parent, List<ContentView> pages, List<UserView> users)
+    public async Task GenerateFullBlog(ContentView parent, List<ContentView> pages, List<UserView> users, List<ActivityView> activity)
     {
         //First, delete the original blog to make things easy
         DeleteBlog(parent.hash);
 
         //Then, generate the blog for the parent
-        await GenerateBlogpost(parent, parent, pages, users);
+        await GenerateBlogpost(parent, parent, pages, users, activity);
 
         //Then just one for each
         foreach(var page in pages)
         {
-            await GenerateBlogpost(page, parent, pages, users);
+            await GenerateBlogpost(page, parent, pages, users, activity);
         }
     }
 

@@ -11,4 +11,15 @@ window.onload = function()
 
     content_rendered.style = "";
     content_raw.style.display = "none";
+
+    var times = [...document.querySelectorAll("time")];
+    times.forEach(x =>
+    {
+        var date = new Date(x.getAttribute("datetime"));
+
+        if(x.hasAttribute("data-shortdate"))
+            x.textContent = date.toLocaleDateString();
+        else
+            x.textContent = date.toLocaleString();
+    });
 };
