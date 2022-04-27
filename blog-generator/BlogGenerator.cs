@@ -125,6 +125,7 @@ public class BlogGenerator
             parent = parent,
             render_date = DateTime.UtcNow,
             keywords = string.Join(", ", page.keywords.Union(parent.keywords)),
+            parent_link = pathManager.WebBlogMainPath(parent.hash),
             author = GetAuthorFromList(page.createUserId, users)
         };
 
@@ -134,7 +135,8 @@ public class BlogGenerator
         {
             text = x.name,
             link = pathManager.WebBlogPagePath(parent.hash, x.hash),
-            current = x.id == page.id
+            current = x.id == page.id,
+            create_date = x.createDate
         }).ToList();
 
         //Need to use mustache here to generate the template and write it

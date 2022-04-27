@@ -22,7 +22,7 @@ public class BlogPathManager
     public string WebBlogMainPath(string hash) => GetRootedWebResource($"{config.BlogFolder}/{hash}/index.html");
     public string WebBlogPagePath(string hash, string pageHash) => GetRootedWebResource($"{config.BlogFolder}/{hash}/{pageHash}.html");
 
-    public string GetRootedWebResource(string resource) => $"{config.WebRoot}{resource}";
+    public string GetRootedWebResource(string resource) => $"{config.WebRoot}{resource.TrimStart('/')}";
 
     public bool LocalStyleExists(string hash) => File.Exists(LocalStylePath(hash));
     public bool LocalBlogMainExists(string hash) => File.Exists(LocalBlogMainPath(hash));

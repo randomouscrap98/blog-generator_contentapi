@@ -14,7 +14,8 @@ public class MainTemplateData
     public DateTime render_date {get;set;}
     public string author {get;set;} = "???";
     public string keywords {get;set;} = "";
-    public bool is_parent {get;set;}
+    public bool is_parent => parent?.id == page?.id;
+    public string parent_link {get;set;} = "#";
 
     public PageIcon? icon {get;set;} = null;
 

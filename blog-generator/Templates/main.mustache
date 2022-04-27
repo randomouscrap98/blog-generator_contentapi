@@ -26,13 +26,13 @@
 <body {{#is_parent}}data-isblogroot="true"{{/is_parent}}>
     <!-- The section that tells what "blog" this is-->
     <header id="blog_header">
-        <h1 id="blog_title">{{parent.name}}</h1>
+        <h1 id="blog_title"><a href="{{parent_link}}">{{parent.name}}</a></h1>
     </header>
     <!-- The bulk of the page, including navigation -->
     <section id="main_container">
         <article id="post_container">
             <div id="title_container" class="post_title_container">
-                <h2 id="page_title" class="post_title">{{page.name}}</h2>
+                <h2 id="page_title" class="post_title">{{#is_parent}}About{{/is_parent}}{{^is_parent}}{{page.name}}{{/is_parent}}</h2>
             </div>
             <div id="publish_info" class="publish_info">
                 <span id="author">{{author}}</span>
@@ -41,16 +41,22 @@
             <!-- The page is rendered without any markup applied, so the 'rendered' container is empty. There is a separate
                 container with the raw content; upon load, the raw content is rendered into the render element, the render
                 element is unhidden, and the raw element is hidden -->
-            <div id="content_container_rendered" class="contentcontainer" style="display:none"></div>
-            <pre id="content_container_raw" class="contentcontainer">{{page.text}}</pre>
+            <div class="content_container">
+                <div id="content_rendered" class="content" 
+                    data-markup="{{page.values.markup}}" data-markuplang="{{page.values.markupLang}}" style="display:none"></div>
+                <pre id="content_raw" class="content">{{page.text}}</pre>
+            </div>
         </article>
         <nav id="pagenavigation">
             <h3 id="pagenavigation_title">More Posts</h3>
-            <ol id="pagenavigation_list">
+            <ul id="pagenavigation_list">
             {{#navlinks}}
-                <li class="navitem {{#current}}navcurrent{{/current}}"><a href="{{link}}">{{text}}</a></li>
+                <li class="navitem {{#current}}navcurrent{{/current}}">
+                    <a class="navlink" href="{{link}}">{{text}}</a>
+                    <time class="navdate" datetime={{create_date_str}}>{{create_date}}</time>
+                </li>
             {{/navlinks}}
-            </ol>
+            </ul>
         </nav>
     </section>
     <!-- Whatever extra junk you want to put on the bottom. Don't know what to do with it -->
