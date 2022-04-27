@@ -88,6 +88,17 @@ public class BlogGenerator
             DeleteBlog(remHash);
     }
 
+    public async Task<List<string>> GetRegenStyles(IEnumerable<ContentView> styles)
+    {
+        var regenStyles = new List<string>();
+
+        foreach (var style in styles)
+            if (await ShouldRegenStyle(style.hash, style.lastRevisionId))
+                regenStyles.Add(style.hash);
+
+        return regenStyles;
+    }
+
     public List<string> GetStylesForParent(ContentView parent)
     {
         if(parent.values.ContainsKey(ShareStylesKey))

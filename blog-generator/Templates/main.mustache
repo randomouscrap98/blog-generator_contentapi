@@ -53,7 +53,7 @@
             {{#navlinks}}
                 <li class="navitem {{#current}}navcurrent{{/current}}">
                     <a class="navlink" href="{{link}}">{{text}}</a>
-                    <time class="navdate" datetime={{create_date_str}}>{{create_date}}</time>
+                    <time class="navdate" datetime={{create_date_str}}>{{create_date_short}}</time>
                 </li>
             {{/navlinks}}
             </ul>
@@ -63,7 +63,7 @@
     <footer id="blog_footer">
         <span id="blog_id">{{parent.id}}</span>
         <span id="page_id">{{page.id}}</span>
-        <span id="render_date">{{render_date}}</span>
+        <time id="render_date" datetime="{{render_date_str}}">{{render_date_str}}</time>
     </footer>
 </body>
 

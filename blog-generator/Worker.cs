@@ -126,6 +126,26 @@ public class Worker : BackgroundService
         }
     }
 
+    public async Task StyleStaging(IEnumerable<ContentView> styles, Func<WebSocketRequest, Task> sendFunc, string onBehalf)
+    {
+        var regenStyles = await blogGenerator.GetRegenStyles(styles);
+
+        if (regenStyles.Count > 0)
+        {
+            logger.LogInformation($"Re-obtaining {regenStyles.Count} styles that were apparently updated in {onBehalf}");
+            await sendFunc(new WebSocketRequest()
+            {
+                id = styleRefreshKey,
+                type = requestKey,
+                data = GetStyleRegenRequest(regenStyles)
+            });
+        }
+        else
+        {
+            logger.LogInformation($"No styles need to be regenerated in {onBehalf}");
+        }
+    }
+
     protected async Task HandleResponse(WebSocketResponse response, Func<WebSocketRequest, Task> sendFunc)
     {
         logger.LogDebug($"Received response type {response.type}, id {response.id}, error '{response.error}'");
@@ -148,26 +168,7 @@ public class Worker : BackgroundService
             //Remove old blogs that are no longer in service, ie blogs on the system that weren't returned in the full check
             blogGenerator.CleanupMissingBlogs(contents.Select(x => x.hash));
             
-            var regenStyles = new List<string>();
-            
-            foreach(var style in styles)
-                if(await blogGenerator.ShouldRegenStyle(style.hash, style.lastRevisionId))
-                    regenStyles.Add(style.hash);
-            
-            if(regenStyles.Count > 0)
-            {
-                logger.LogInformation($"Re-obtaining {regenStyles.Count} styles that were apparently updated");
-                await sendFunc(new WebSocketRequest()
-                {
-                    id = styleRefreshKey,
-                    type = requestKey,
-                    data = GetStyleRegenRequest(regenStyles)
-                });
-            }
-            else
-            {
-                logger.LogInformation($"No styles need to be regenerated in {initialPrecheckKey}");
-            }
+            await StyleStaging(styles, sendFunc, initialPrecheckKey);
 
             //Then go regen all the blogs. Yes, this might be a lot of individual lookups but oh well
             foreach(var blog in contents)
@@ -223,6 +224,9 @@ public class Worker : BackgroundService
 
                 var contents = Utilities.ForceCastResultObjects<ContentView>(realObjects, contentName, liveKey);
                 var parents = Utilities.ForceCastResultObjects<ContentView>(realObjects, parentKey, liveKey);
+
+                //Don't need to check parents, they're not the ones getting updated
+                await StyleStaging(contents, sendFunc, liveKey);
 
                 //If the direct content to be modified was a blog, do the standard procedure
                 foreach(var content in contents)

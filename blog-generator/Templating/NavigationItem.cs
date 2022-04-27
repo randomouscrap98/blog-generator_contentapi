@@ -8,4 +8,5 @@ public class NavigationItem
     public DateTime? create_date {get;set;}
 
     public string? create_date_str => Constants.ShortIsoFormat(create_date);
+    public string? create_date_short => create_date?.ToShortDateString();
 }

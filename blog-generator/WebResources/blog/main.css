@@ -6,31 +6,52 @@ body {
 
 header {
     padding: 1em;
-    background-color: lightblue;
+    background-color: #333;
 }
 
 footer {
-    background-color: lightblue;
+    background-color: #333;
+    color: #CCC;
+    font-size: 0.9em;
+    padding: 0.2em;
+}
+
+footer > * {
+    margin-right: 0.5em;
+}
+
+#blog_title {
+    margin: 0.3em 0;
 }
 
 #blog_title a:visited, #blog_title a:link {
     text-decoration: none;
-    color: black;
+    color: #EEE;
 }
 
 #main_container {
     display: flex;
     flex-wrap: wrap;
+    align-items: flex-start;
 }
 
 #post_container {
     flex: auto;
     flex-basis: 50em;
+    margin-bottom: 1em;
 }
 
 #pagenavigation {
     flex: none;
     width: 20em;
+    border-radius: 1em;
+    background-color: #EEE;
+    padding: 0.7em 0.5em;
+    margin-top: 1em;
+}
+
+#pagenavigation > * {
+    margin: 0.5em;
 }
 
 section {
@@ -52,3 +73,30 @@ section {
 .content_container {
     padding: 0.5em;
 }
+
+.navitem {
+    margin: 0.5em 0;
+}
+
+.navcurrent::after {
+    content: "📖";
+    margin-left: 0.7em;
+}
+
+.navdate {
+    font-style: italic;
+    color: #777;
+    font-size: 0.9em;
+    margin-left: 0.5em;
+}
+
+#render_date {
+    float: right;
+}
+
+#render_date::before {
+    content: "Rendered on: ";
+}
+
+#page_id::before { content: "Page ID: "; }
+#blog_id::before { content: "Blog ID: "; }
