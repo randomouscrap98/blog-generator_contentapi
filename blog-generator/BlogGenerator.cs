@@ -130,8 +130,8 @@ public class BlogGenerator
         //something else MAY be done.
         var templateData = new MainTemplateData()
         {
-            scripts = templateConfig.ScriptIncludes.Select(x => pathManager.GetRootedWebResource(x)).ToList(),
-            styles = templateConfig.StyleIncludes.Select(x => pathManager.GetRootedWebResource(x)).ToList(),
+            scripts = templateConfig.ScriptIncludes.Select(x => pathManager.WebStaticPath(x)).ToList(),
+            styles = templateConfig.StyleIncludes.Select(x => pathManager.WebStaticPath(x)).ToList(),
             page = page,
             parent = parent,
             render_date = DateTime.UtcNow,

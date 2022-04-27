@@ -249,8 +249,11 @@ public class Worker : BackgroundService
                 using var ms = new MemoryStream();
 
                 var sender = new Func<WebSocketRequest, Task>((o) => ws.SendObjectAsync<WebSocketRequest>(o, WebSocketMessageType.Text, stoppingToken));
+                var websocketUrl = $"{wsconfig.WebsocketEndpoint}?token={wsconfig.AnonymousToken}";
 
-                await ws.ConnectAsync(new Uri($"{wsconfig.WebsocketEndpoint}?token={wsconfig.AnonymousToken}"), stoppingToken);
+                logger.LogInformation($"Connecting to: {websocketUrl}");
+
+                await ws.ConnectAsync(new Uri(websocketUrl), stoppingToken);
 
                 //We HAVE to wait for the initial lastId message
                 var connectResponse = await ws.ReceiveObjectAsync<WebSocketResponse>(ms, stoppingToken);

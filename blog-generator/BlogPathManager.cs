@@ -11,23 +11,24 @@ public class BlogPathManager
         this.config = config;
     }
 
-    protected string StylesFolder => Path.Join(config.LocalRoot, config.StylesFolder);
-    protected string BlogFolder => Path.Join(config.LocalRoot, config.BlogFolder);
+    protected string StylesFolder => Path.Join(config.LocalContentRoot, config.StylesFolder);
+    protected string BlogFolder => Path.Join(config.LocalContentRoot, config.BlogFolder);
 
     public string LocalStylePath(string hash) => Path.Join(StylesFolder, $"{hash}.css");
     public string LocalBlogMainPath(string hash) => Path.Join(BlogFolder, hash, "index.html");
     public string LocalBlogPagePath(string hash, string pageHash) => Path.Join(BlogFolder, hash, $"{pageHash}.html");
 
-    public string WebStylePath(string hash) => GetRootedWebResource($"{config.StylesFolder}/{hash}.css");
-    public string WebBlogMainPath(string hash) => GetRootedWebResource($"{config.BlogFolder}/{hash}/index.html");
-    public string WebBlogPagePath(string hash, string pageHash) => GetRootedWebResource($"{config.BlogFolder}/{hash}/{pageHash}.html");
+    public string WebStylePath(string hash) => WebContentpath($"{config.StylesFolder}/{hash}.css");
+    public string WebBlogMainPath(string hash) => WebContentpath($"{config.BlogFolder}/{hash}/index.html");
+    public string WebBlogPagePath(string hash, string pageHash) => WebContentpath($"{config.BlogFolder}/{hash}/{pageHash}.html");
 
-    public string GetRootedWebResource(string resource) => $"{config.WebRoot}{resource.TrimStart('/')}";
+    public string WebContentpath(string resource) => $"{config.WebContentRoot}{resource.TrimStart('/')}";
+    public string WebStaticPath(string resource) => $"{config.WebStaticRoot}{resource.TrimStart('/')}";
 
     public bool LocalStyleExists(string hash) => File.Exists(LocalStylePath(hash));
     public bool LocalBlogMainExists(string hash) => File.Exists(LocalBlogMainPath(hash));
 
-    public string ImagePath(string hash) => $"{config.ImageRoot}/hash";
+    //public string ImagePath(string hash) => $"{config.ImageRoot}/hash";
 
     public List<string> GetAllBlogHashes()
     {
