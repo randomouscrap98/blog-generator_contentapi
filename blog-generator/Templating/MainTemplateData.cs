@@ -17,7 +17,7 @@ public class MainTemplateData
     public bool is_parent => parent?.id == page?.id;
     public string parent_link {get;set;} = "#";
 
-    public PageIcon? icon {get;set;} = null;
+    //public PageIcon? icon {get;set;} = null;
 
     public string? render_date_str => Constants.ShortIsoFormat(render_date);
     public string? page_create_date_str => Constants.ShortIsoFormat(page?.createDate);

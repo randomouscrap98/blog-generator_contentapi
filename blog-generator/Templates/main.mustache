@@ -12,9 +12,9 @@
     <meta name="theme-color" content="{{parent.values.share_theme_color}}">
     {{/parent.values.share_theme_color}}
     <title>{{page.name}}</title>
-    {{#icon}}
-    <link rel="icon" type="{{icon.type}}" href="{{icon.link}}">
-    {{/icon}}
+    {{#parent.values.share_favicon}}
+    <link rel="icon" type="image/png" href="{{parent.values.share_favicon}}">
+    {{/parent.values.share_favicon}}
     {{#scripts}}
     <script src="{{.}}"></script>
     {{/scripts}}
