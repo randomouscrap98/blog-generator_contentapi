@@ -20,12 +20,14 @@ public class Worker : BackgroundService
     public const string contentName = nameof(RequestType.content);
     public const string userName = nameof(RequestType.user);
     public const string activityName = nameof(RequestType.activity);
-    public const string blogFields = "id, name, text, hash, lastRevisionId, values, createUserId, createDate, parentId, keywords, description, contentType";
+    public const string blogFields = "id, name, text, hash, lastRevisionId, values, createUserId, createDate, parentId, keywords, description, contentType, literalType";
     public const string userFields = "id, username, createDate, avatar";
 
     public const string requestKey = "request";
     public const string liveKey = "live";
     public const string shareKey = "share";
+    public const string resourceKey = "resource";
+    //public const string shareIgnoreKey = "share_ignore";
     public const string parentKey = "parent";
 
     public const string initialPrecheckKey = "initial_precheck";
@@ -51,7 +53,8 @@ public class Worker : BackgroundService
         {
             values = new Dictionary<string, object>() {
                 { "hash", hash },
-                { "type", InternalContentType.page }
+                { "type", InternalContentType.page },
+                { "resource", resourceKey }
             },
             requests = new List<SearchRequest>() {
                 new SearchRequest() {
@@ -64,7 +67,7 @@ public class Worker : BackgroundService
                     name = blogPagesKey,
                     type = contentName,
                     fields = blogFields,
-                    query = $"parentId in @{blogParentKey}.id and contentType = @type"
+                    query = $"parentId in @{blogParentKey}.id and contentType = @type and literalType = @resource"
                 },
                 new SearchRequest() {
                     type = activityName,

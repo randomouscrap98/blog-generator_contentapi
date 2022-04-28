@@ -23,7 +23,7 @@
     {{/styles}}
 </head>
 
-<body {{#is_parent}}data-isblogroot="true"{{/is_parent}}>
+<body {{#is_parent}}data-isblogroot="true"{{/is_parent}} data-page="{{page.hash}}" data-parent="{{parent.hash}}">
     <!-- The section that tells what "blog" this is-->
     <header id="blog_header">
         <h1 id="blog_title"><a href="{{parent_link}}">{{parent.name}}</a></h1>
@@ -61,7 +61,7 @@
             <h3 id="pagenavigation_title">More Posts</h3>
             <ul id="pagenavigation_list">
             {{#navlinks}}
-                <li class="navitem {{#current}}navcurrent{{/current}}" {{#current}}aria-current="page"{{/current}}>
+                <li class="navitem {{#current}}navcurrent{{/current}}" {{#current}}aria-current="page"{{/current}} data-page={{hash}}>
                     <a class="navlink" href="{{link}}">{{text}}</a>
                     <time class="navdate" data-shortdate="" datetime={{create_date_str}}>{{create_date_short}}</time>
                 </li>

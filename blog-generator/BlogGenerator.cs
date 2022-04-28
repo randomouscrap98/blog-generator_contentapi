@@ -150,7 +150,8 @@ public class BlogGenerator
             text = x.name,
             link = pathManager.WebBlogPagePath(parent.hash, x.hash),
             current = x.id == page.id,
-            create_date = x.createDate
+            create_date = x.createDate,
+            hash = x.hash
         }).ToList();
 
         //Need to use mustache here to generate the template and write it
