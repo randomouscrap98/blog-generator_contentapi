@@ -29,7 +29,7 @@
         <h1 id="blog_title"><a href="{{parent_link}}">{{parent.name}}</a></h1>
     </header>
     <!-- The bulk of the page, including navigation -->
-    <section id="main_container">
+    <main id="main_container">
         <article id="post_container">
             <div id="title_container" class="post_title_container">
                 <h2 id="page_title" class="post_title">{{#is_parent}}About{{/is_parent}}{{^is_parent}}{{page.name}}{{/is_parent}}</h2>
@@ -61,7 +61,7 @@
             <h3 id="pagenavigation_title">More Posts</h3>
             <ul id="pagenavigation_list">
             {{#navlinks}}
-                <li class="navitem {{#current}}navcurrent{{/current}}">
+                <li class="navitem {{#current}}navcurrent{{/current}}" {{#current}}aria-current="page"{{/current}}>
                     <a class="navlink" href="{{link}}">{{text}}</a>
                     <time class="navdate" data-shortdate="" datetime={{create_date_str}}>{{create_date_short}}</time>
                 </li>
@@ -70,7 +70,7 @@
         </nav>
         <div id="section_extra_1" class="blank_div"></div>
         <div id="section_extra_2" class="blank_div"></div>
-    </section>
+    </main>
     <div id="body_extra_1" class="blank_div"></div>
     <div id="body_extra_2" class="blank_div"></div>
     <!-- Whatever extra junk you want to put on the bottom. Don't know what to do with it -->
