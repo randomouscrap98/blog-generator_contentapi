@@ -16,10 +16,10 @@
     <link rel="icon" type="image/png" href="{{parent.values.share_favicon}}">
     {{/parent.values.share_favicon}}
     {{#scripts}}
-    <script src="{{.}}"></script>
+    <script src="{{.}}?v={{version}}"></script>
     {{/scripts}}
     {{#styles}}
-    <link rel="stylesheet" href="{{.}}">
+    <link rel="stylesheet" href="{{.}}?v={{version}}">
     {{/styles}}
 </head>
 

@@ -12,6 +12,7 @@ public class MainTemplateData
 
     public List<NavigationItem> navlinks {get;set;} = new List<NavigationItem>();
 
+    public string version {get;set;} = "1";
     public DateTime render_date {get;set;}
     public string author {get;set;} = "???";
     public string edit_author {get;set;} = "???";

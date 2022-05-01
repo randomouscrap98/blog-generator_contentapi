@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using blog_generator.Configs;
 using contentapi.data.Views;
-using Newtonsoft.Json.Linq;
 
 namespace blog_generator;
 
@@ -13,6 +12,7 @@ public class BlogGenerator
     protected TemplateLoader renderer;
 
     public const string ShareStylesKey = "share_styles";
+    public const long TicksPerSecond = 10000000;
 
     public BlogGenerator(ILogger<BlogGenerator> logger, TemplateConfig templateConfig, BlogPathManager pathManager, TemplateLoader renderer)
     {
@@ -27,7 +27,9 @@ public class BlogGenerator
         if(!pathManager.LocalStyleExists(hash))
             return true;
 
-        return !Regex.IsMatch(await File.ReadAllTextAsync(pathManager.LocalStylePath(hash)), @$"^/\*{revisionId}\*/");
+        var lines = await File.ReadAllLinesAsync(pathManager.LocalStylePath(hash));
+
+        return !Regex.IsMatch(lines[2], @$"^\s*{revisionId}");
     }
 
     public async Task<bool> ShouldRegenBlog(string hash, long revisionId)
@@ -136,6 +138,7 @@ public class BlogGenerator
             page = page,
             parent = parent,
             render_date = DateTime.UtcNow,
+            version = (DateTime.Now.Ticks / TicksPerSecond).ToString(),
             keywords = string.Join(", ", page.keywords.Union(parent.keywords)),
             parent_link = pathManager.WebBlogMainPath(parent.hash),
             author = GetAuthorFromList(page.createUserId, users),

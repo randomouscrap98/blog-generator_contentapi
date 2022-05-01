@@ -1,3 +1,5 @@
+@charset "UTF-8";
+
 body {
     font-family: sans-serif;
     padding: 0;
@@ -6,13 +8,13 @@ body {
 
 header {
     padding: 1em;
-    background-color: #333;
+    background-color: #0d3e5c;
 }
 
 footer {
     display: flex;
     flex-wrap: wrap;
-    background-color: #333;
+    background-color: #0d3e5c;
     color: #CCC;
     font-size: 0.9em;
     padding: 0.2em;
@@ -28,6 +30,20 @@ main {
 
 .blank_div { display: none; }
 
+.content_container {
+    padding: 0.5em;
+}
+
+.publish_info {
+    font-style: italic;
+    color: #777;
+    font-size: 0.9em;
+    margin-bottom: 0.75em;
+}
+
+.publish_info > * {
+    margin-left: 0.5em;
+}
 
 #blog_title {
     margin: 0.3em 0;
@@ -54,7 +70,7 @@ main {
     flex: none;
     width: 20em;
     border-radius: 1em;
-    background-color: #EEE;
+    background-color: #dff1f4;
     padding: 0.7em 0.5em;
     margin-top: 1em;
 }
@@ -68,29 +84,6 @@ main {
     flex-wrap: wrap;
 }
 
-[data-edited] #create_publish_info::after { 
-    content: ","; 
-}
-[data-edited] #edit_publish_info::before { 
-    content: "Update: "; 
-    margin-left: 0.8em;
-}
-
-.publish_info {
-    font-style: italic;
-    color: #777;
-    font-size: 0.9em;
-    /*margin-left: 0.5em;*/
-    margin-bottom: 0.75em;
-}
-
-.publish_info > * {
-    margin-left: 0.5em;
-}
-
-.content_container {
-    padding: 0.5em;
-}
 
 .navitem {
     margin: 0.5em 0;
@@ -112,9 +105,10 @@ main {
     margin-left: auto;
 }
 
-#render_date::before {
-    content: "Rendered on: ";
-}
 
+[data-edited] #create_publish_info::after { content: ","; }
+[data-edited] #edit_publish_info::before { content: "Update: "; margin-left: 0.8em; }
+
+#render_date::before { content: "Rendered on: "; }
 #page_id::before { content: "Page ID: "; }
 #blog_id::before { content: "Blog ID: "; }

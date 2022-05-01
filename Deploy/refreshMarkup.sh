@@ -3,13 +3,15 @@
 # in this blog generator repo
 set -e
 
-MBASE="https://raw.githubusercontent.com/12Me21/markup2/class"
-FILES="langs.js render.js helpers.js parse.js markup.css"
+MBASE="https://raw.githubusercontent.com/12Me21/markup2/🌵"
+# MBASE="https://raw.githubusercontent.com/12Me21/markup2/class"
+FILES="legacy.js langs.js render.js helpers.js parse.js markup.css"
 
 cd ../blog-generator/WebResources/markup
-rm *
+rm -f *
 
 for f in $FILES
 do
     wget "$MBASE/$f"
 done 
+
