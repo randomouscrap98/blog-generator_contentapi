@@ -1,4 +1,4 @@
-window.onload = function()
+function page_onparse()
 {
     var rawText = content_raw.textContent;
     var markupLang = 
@@ -7,7 +7,6 @@ window.onload = function()
         "plaintext";
 
     var rendered = Markup.convert_lang(rawText, markupLang, content_rendered);
-    //content_rendered.appendChild(rendered); 
 
     content_rendered.style = "";
     content_raw.style.display = "none";
@@ -22,4 +21,9 @@ window.onload = function()
         else
             x.textContent = date.toLocaleString();
     });
-};
+}
+
+if (document.readyState == 'loading')
+	document.addEventListener('DOMContentLoaded', page_onparse)
+else
+	page_onparse()
