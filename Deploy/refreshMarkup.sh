@@ -3,7 +3,7 @@
 # in this blog generator repo
 set -e
 
-MBASE="https://raw.githubusercontent.com/12Me21/markup2/🌵"
+MBASE="https://raw.githubusercontent.com/12Me21/markup2/cactus"
 # MBASE="https://raw.githubusercontent.com/12Me21/markup2/class"
 FILES="legacy.js langs.js render.js helpers.js parse.js markup.css"
 
