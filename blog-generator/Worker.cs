@@ -135,9 +135,16 @@ public class Worker : BackgroundService
         }
     }
 
-    public async Task StyleStaging(IEnumerable<ContentView> styles, Func<WebSocketRequest, Task> sendFunc, string onBehalf)
+    public async Task StyleStaging(IEnumerable<ContentView> styles, Func<WebSocketRequest, Task> sendFunc, string onBehalf, bool force = false)
     {
+        logger.LogDebug($"Testing {styles.Count()} styles  for regeneration for {onBehalf}. forcing: {force}");
         var regenStyles = await blogGenerator.GetRegenStyles(styles);
+
+        if(!force)
+        {
+            var existingHashes = pathManager.GetAllStyleHashes();
+            regenStyles = regenStyles.Intersect(existingHashes).ToList();
+        }
 
         if (regenStyles.Count > 0)
         {
