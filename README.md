@@ -1,3 +1,7 @@
+## 💙--DEPRECATED--💙
+All functionality here is now contained within contentapi by default. This was done to reduce memory usage on the machine (and it did).
+If you want to generate blogs using contentapi, please setup the generator through `appsettings.json`
+
 # blog-generator_contentapi
 A simple static-rendering blog generator which connects directly to a contentapi instance
 
